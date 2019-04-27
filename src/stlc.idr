@@ -1,3 +1,5 @@
+module STLC
+
 import Pruviloj
 import Pruviloj.Derive.DecEq
 
@@ -6,10 +8,15 @@ import Pruviloj.Derive.DecEq
 
 %language ElabReflection
 %default total
+%access public export
 
 data Typ 
     = Base
     | Arrow Typ Typ
+
+Show Typ where
+    show Base = "A"
+    show (Arrow ty1 ty2) = (show ty1) ++ "->" ++ (show ty2)
 
 Uninhabited (Base = Arrow _ _) where
     uninhabited Refl impossible
@@ -25,6 +32,13 @@ data Term
     | Abs String Typ Term
     | App Term Term
 
+Show Term where
+    show (Var x) = x
+    show (Abs x ty t) = "\\" ++ x ++ " : " ++ (show ty) ++ ". " ++ (show t)
+    show (App t1 t2) = (helper t1) ++ " " ++ (helper t2)
+        where 
+            helper (Var x) = x
+            helper t = "(" ++ show t ++ ")"
 data Value : Term -> Type where
     AbsVal : Value (Abs _ _ _)
 
@@ -200,9 +214,14 @@ typecheck (App t1 t2) ctx with (typecheck t1 ctx)
             | (No contra) = No (\(ty ** pt3) => 
                 contra (typecheckLemma pt3 pt1 pt2))
             | (Yes p) = Yes (ty2 ** TApp pt1 (rewrite p in pt2))
-
 partial
 eval : (t : Term) -> Either ((ty ** Typed [] t ty), (t' ** LongEval t t')) ((ty ** Typed [] t ty) -> Void)
 eval t with (typecheck t []) 
     | (Yes (ty ** pt)) = Left ((ty ** pt), (eval' t pt))
     | (No contra) = Right contra
+
+partial
+evalForget : Term-> Maybe Term
+evalForget t with (eval t)
+    | Left ((_ ** _), (t' ** _)) = Just t'
+    | Right _ = Nothing
