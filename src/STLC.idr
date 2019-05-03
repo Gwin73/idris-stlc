@@ -48,20 +48,6 @@ Uninhabited (Value (Var _)) where
 Uninhabited (Value (App _ _)) where
     uninhabited _ impossible
 
-subst : String -> Term -> Term -> Term
-subst x s (Var y) with (decEq x y) 
-    | (Yes _) = s
-    | (No _) = Var y
-subst x s (Abs y ty t) with (decEq x y) 
-    | (Yes _) = Abs x ty t
-    | (No _) = Abs y ty (subst x s t)
-subst x s (App t1 t2) = App (subst x s t1) (subst x s t2)
-
-data Eval : Term -> Term -> Type where
-    EApp1 : Eval t1 t1' -> Eval (App t1 t2) (App t1' t2)
-    EApp2 : Value v1 -> Eval t2 t2' -> Eval (App v1 t2) (App v1 t2')
-    EAppAbs : Value v2 -> t1' = subst x v2 t1 -> Eval (App (Abs x ty t1) v2) t1'
-
 Ctx : Type
 Ctx = List (String, Typ)
 
@@ -143,6 +129,20 @@ typedUniqueType (TAbs pt1) (TAbs pt2) with (typedUniqueType pt1 pt2)
     | Refl = Refl
 typedUniqueType (TApp pt1 _) (TApp pt2 _) with (typedUniqueType pt1 pt2)
     | Refl = Refl
+
+subst : String -> Term -> Term -> Term
+subst x s (Var y) with (decEq x y) 
+    | (Yes _) = s
+    | (No _) = Var y
+subst x s (Abs y ty t) with (decEq x y) 
+    | (Yes _) = Abs x ty t
+    | (No _) = Abs y ty (subst x s t)
+subst x s (App t1 t2) = App (subst x s t1) (subst x s t2)
+
+data Eval : Term -> Term -> Type where
+    EApp1 : Eval t1 t1' -> Eval (App t1 t2) (App t1' t2)
+    EApp2 : Value v1 -> Eval t2 t2' -> Eval (App v1 t2) (App v1 t2')
+    EAppAbs : Value v2 -> t1' = subst x v2 t1 -> Eval (App (Abs x ty t1) v2) t1'
 
 progress : (t : Term) -> Typed [] t ty -> Either (Value t) (t' ** Eval t t')
 progress (Var _) (TVar _) impossible
